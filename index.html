@@ -1,3 +1,9 @@
+<!-- 
+http://graphical.weather.gov/xml/
+http://graphical.weather.gov/sectors/midatlantic.php#tabs
+http://openweathermap.org/api
+
+ -->
 <!DOCTYPE html>
 <html>
 
@@ -77,13 +83,16 @@
 <script id="fs-Main" type="x-shader/x-fragment"> 
 	precision mediump float;
 	uniform sampler2D mainTex;
+	uniform sampler2D bg;
 	varying vec2 v_texCoord;
+	uniform vec2 screenResolution;
 
 	const float SPREAD_SIZE = 0.001;
 
 	void main()
 	{
 		vec2 uv = v_texCoord * 0.5;
+		vec2 uv_flip_norm = vec2(1.)- gl_FragCoord.xy / screenResolution.xy;
 		float spread = 0.;
 		for (int j = -1 ; j <= 1; j++)
 		{
@@ -96,7 +105,10 @@
 		color.a = color.x;
 		color += spread * vec4(0.,0.,0.,1.);
 		color = clamp(color, vec4(0.), vec4(1.));
-		color.xyz = color.a * color.xyz + vec3(0.,0.,0.6)*(1. - color.a);
+		// vec3 bg_color = vec3(0.,0.,0.6);
+		// color.xyz = color.a * color.xyz + bg_color * (1. - color.a);
+		vec4 bg_imgcolor = texture2D(bg, uv_flip_norm);
+		color.xyz = color.a * color.xyz + bg_imgcolor.xyz * (1. - color.a); 
 		color.a = 1.;
 		gl_FragColor = color;
 	}
@@ -108,10 +120,30 @@
 <script type="text/javascript">
 	
 	RequestLocationFromRemoteService()
-	.then(response => JSON.parse(response), Error)
-	.then(x => RequestLocationNameFromRemoteService(x.location.lat, x.location.lng))
-	.then(response => JSON.parse(response), Error)
-	.then(x => {console.log(x)})
+	.then(JSON.parse, Error)
+	.then(x => Flickr.RequestSearchByLatLong(x.location.lat, x.location.lng))
+	.then(JSON.parse, Error)
+	.then(
+		x => {
+			//select a photo randomly
+			let pic = x.photos.photo[Math.floor(Math.random() * x.photos.photo.length)]
+			return Flickr.RequestGetSizes(pic.id)
+		})
+	.then(JSON.parse, Error)
+	.then(
+		x => {
+			let img_src =  x.sizes.size[Math.max(x.sizes.size.length - 2, 0)].source
+			LoadTextureFromSource("bg", img_src, {"min" : gl.LINEAR, "mag": gl.LINEAR, "wrap": gl.CLAMP_TO_EDGE, "generateMipmap" : false})
+		})
+	.then( x => {
+		BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2)
+		let main = programs.get("Main")
+		WithProgram(main, () => { 
+			gl.uniform1i(gl.getUniformLocation(main, "bg"), 2) 
+		})
+	}, Error)
+
+
 
 
 </script>

@@ -122,20 +122,22 @@ function Update(gl, time)
 
 function Draw(gl, time)
 {
-	gl.useProgram(programs.get("FontSampler"))
 	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.get("Text"))
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.activeTexture(gl.TEXTURE0)
-	gl.bindTexture(gl.TEXTURE_2D, textures["unifont"])
-	gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-	gl.activeTexture(gl.TEXTURE1)
-	gl.bindTexture(gl.TEXTURE_2D, framebufferTextures.get("Text"))
-	gl.useProgram(programs.get("Main"))
-	gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT)
-	gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
+	WithProgram(programs.get("FontSampler"), () => {
+		BindTextureAt(textures["unifont"], gl.TEXTURE_2D, 0)
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+		gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
+	})
 
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null)	
+
+	WithProgram(programs.get("Main"), () => {
+		BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2)
+		BindTextureAt(framebufferTextures.get("Text"), gl.TEXTURE_2D, 1)
+		gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT)
+		gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
+	})
 }
 
 
@@ -149,22 +151,32 @@ function Loop(time)
 	Draw(gl, time)
 }
 
+function LoadTextureFromSource(name, source, params)
+	{
+		return new Promise( (resolve, reject) => {
+			var img = new Image()
+			//TODO (OS): Make optional
+			img.crossOrigin = "anonymous"
+			img.onload = () => 
+			{ 
+				params.pixels = img
+				//TODO (OS): This blocks too, need to async
+				let tex = CreateTexture(gl, params)
+				if (tex) 
+				{
+					textures[name] = tex 
+					resolve(tex);
+				}
+				else { reject (Error ("Couldn't Create Texture : " + name))}
+			}
+			img.src = source
+		})
+		}
+
 function LoadAssets(gl, textures)
 {
-	function loadTextureFromSource(name, source, params)
-	{
-		var img = new Image()
-		img.onload = function(){ 
-			params.pixels = img
-			let tex = CreateTexture(gl, params)
-			if (tex) { textures[name] = tex }
-		}
-		img.src = source
-	}
-
-
 	//TODO (OS): Make this cleaner and through the top level
-	loadTextureFromSource("unifont", "assets/unifont-8.0.01.bmp", {"min" : gl.LINEAR, "mag": gl.NEAREST, "wrap": gl.REPEAT, "generateMipmap" : true}) 
+	LoadTextureFromSource("unifont", "assets/unifont-8.0.01.bmp", {"min" : gl.LINEAR, "mag": gl.NEAREST, "wrap": gl.REPEAT, "generateMipmap" : true}) 
 }
 
 
@@ -238,6 +250,14 @@ function LoadShaders(gl, shaders, list)
 	
 }
 
+function BindTextureAt(texture, type, bindOffset)
+{
+	let active = gl.getParameter(gl.ACTIVE_TEXTURE)
+	gl.activeTexture(gl.TEXTURE0 + bindOffset)
+	gl.bindTexture(type, texture)
+	gl.activeTexture(active)
+}
+
 function UpdateViewportSize(gl)
 {
 	gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
@@ -246,7 +266,14 @@ function UpdateViewportSize(gl)
 		gl.useProgram(pgm)
 		gl.uniform2f(gl.getUniformLocation(pgm, "screenResolution"), gl.drawingBufferWidth, gl.drawingBufferHeight);
 	}
+}
 
+function WithProgram(pgm, func)
+{
+	let active = gl.getParameter(gl.CURRENT_PROGRAM)
+	gl.useProgram(pgm)
+	func()
+	gl.useProgram(active)
 }
 
 function InitGLContext(canvas)
