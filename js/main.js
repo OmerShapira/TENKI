@@ -72,18 +72,19 @@ function Start(gl)
 
 	//Set up uniforms
 
-	gl.useProgram(programs.get("FontSampler"))
-	gl.uniform1i(gl.getUniformLocation(programs.get("FontSampler"), "font"), 0)
+	WithProgram(programs.get("FontSampler"), () => {
+		gl.uniform1i(gl.getUniformLocation(programs.get("FontSampler"), "font"), 0)
+	})
 
-	gl.useProgram(programs.get("Main"))
-	gl.uniform1i(gl.getUniformLocation(programs.get("Main"), "mainTex"), 1)
+	WithProgram(programs.get("Main"), () => {
+		gl.uniform1i(gl.getUniformLocation(programs.get("Main"), "mainTex"), 1)
+		gl.uniform1i(gl.getUniformLocation(programs.get("Main"), "bg"),      2)
+		gl.uniform1f(gl.getUniformLocation(programs.get("Main"), "image_presence"), 0) 
+	})
+	
 
 	//Bind textures
-
-	gl.activeTexture(gl.TEXTURE0);
-	gl.bindTexture(gl.TEXTURE_2D, textures["unifont"]);
-
-	gl.activeTexture(gl.TEXTURE1)
+	
 	var tex = CreateTexture(gl, {
 		"width": gl.drawingBufferWidth,
 		"height": gl.drawingBufferHeight,
@@ -94,12 +95,12 @@ function Start(gl)
 	framebufferTextures.set("Text", tex)
 	var fb = gl.createFramebuffer()
 	framebuffers.set("Text", fb)
-	gl.bindFramebuffer(gl.FRAMEBUFFER, fb)
-	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
-
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-	//set up drawing context
 	
+	WithFramebuffer (fb, () => {
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
+	})
+
+	//set up drawing context
 
 	gl.clearColor(0,0,0,1)
 	gl.enable(gl.DEPTH_TEST)
@@ -112,29 +113,35 @@ function Start(gl)
 
 function Update(gl, time)
 {
+	Timer.Tick(time)
+
 	for (let pgm of programs.values())
 	{
-		gl.useProgram(pgm)
-		gl.uniform1f(gl.getUniformLocation(pgm, "time"), time);	
+		WithProgram(pgm, () => {
+			gl.uniform1f(gl.getUniformLocation(pgm, "time"), time)
+		})
 	}
 	
 }
 
-function Draw(gl, time)
-{
-	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.get("Text"))
+function Draw(gl, time){
 
-	WithProgram(programs.get("FontSampler"), () => {
-		BindTextureAt(textures["unifont"], gl.TEXTURE_2D, 0)
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
+
+	BindTextureAt(textures["unifont"], gl.TEXTURE_2D, 0)
+
+	WithFramebuffer(framebuffers.get("Text"), () => {
+		WithProgram(programs.get("FontSampler"), () => {
+
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+			gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
+
+		})
 	})
 
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null)	
+	BindTextureAt(framebufferTextures.get("Text"), gl.TEXTURE_2D, 1)
+	BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2)
 
 	WithProgram(programs.get("Main"), () => {
-		BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2)
-		BindTextureAt(framebufferTextures.get("Text"), gl.TEXTURE_2D, 1)
 		gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT)
 		gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
 	})
@@ -152,26 +159,29 @@ function Loop(time)
 }
 
 function LoadTextureFromSource(name, source, params)
-	{
-		return new Promise( (resolve, reject) => {
-			var img = new Image()
-			//TODO (OS): Make optional
-			img.crossOrigin = "anonymous"
-			img.onload = () => 
-			{ 
-				params.pixels = img
-				//TODO (OS): This blocks too, need to async
-				let tex = CreateTexture(gl, params)
-				if (tex) 
-				{
-					textures[name] = tex 
-					resolve(tex);
-				}
-				else { reject (Error ("Couldn't Create Texture : " + name))}
+{
+	return new Promise( (resolve, reject) => {
+		var img = new Image()
+		//TODO (OS): Make optional
+		img.crossOrigin = "anonymous"
+		img.onload = () => 
+		{ 
+			params.pixels = img
+			//TODO (OS): This blocks too, need to async
+			let tex = CreateTexture(gl, params)
+			if (tex) 
+			{
+				textures[name] = tex 
+				resolve(tex);
 			}
-			img.src = source
-		})
+			else 
+			{ 
+				reject ("Couldn't Create Texture : " + name)
+			}
 		}
+		img.src = source
+	})
+}
 
 function LoadAssets(gl, textures)
 {
@@ -274,6 +284,13 @@ function WithProgram(pgm, func)
 	gl.useProgram(pgm)
 	func()
 	gl.useProgram(active)
+}
+
+function WithFramebuffer(fb, func)
+{
+	gl.bindFramebuffer(gl.FRAMEBUFFER, fb)
+	func()
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 }
 
 function InitGLContext(canvas)

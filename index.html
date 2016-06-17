@@ -82,17 +82,21 @@ http://openweathermap.org/api
 
 <script id="fs-Main" type="x-shader/x-fragment"> 
 	precision mediump float;
+
 	uniform sampler2D mainTex;
 	uniform sampler2D bg;
 	varying vec2 v_texCoord;
 	uniform vec2 screenResolution;
+
+	uniform float image_presence;
 
 	const float SPREAD_SIZE = 0.001;
 
 	void main()
 	{
 		vec2 uv = v_texCoord * 0.5;
-		vec2 uv_flip_norm = vec2(1.)- gl_FragCoord.xy / screenResolution.xy;
+		vec2 uv_norm =  gl_FragCoord.xy / screenResolution.xy;
+		vec2 uv_norm_flipy = vec2(uv_norm.x, 1. - uv_norm.y);
 		float spread = 0.;
 		for (int j = -1 ; j <= 1; j++)
 		{
@@ -105,17 +109,19 @@ http://openweathermap.org/api
 		color.a = color.x;
 		color += spread * vec4(0.,0.,0.,1.);
 		color = clamp(color, vec4(0.), vec4(1.));
-		// vec3 bg_color = vec3(0.,0.,0.6);
-		// color.xyz = color.a * color.xyz + bg_color * (1. - color.a);
-		vec4 bg_imgcolor = texture2D(bg, uv_flip_norm);
+		vec3 bg_color = vec3(0.,0.,0.6);
+		vec3 bg_imgcolor = mix(bg_color, texture2D(bg, uv_norm_flipy).xyz, image_presence);
 		color.xyz = color.a * color.xyz + bg_imgcolor.xyz * (1. - color.a); 
+		// color.xyz = bg_imgcolor.xyz;
 		color.a = 1.;
 		gl_FragColor = color;
 	}
 </script>
 
-<script src="js/main.js"> </script>
 <script src="js/request.js"></script>
+<script src="js/keys.js"></script>
+<script src="js/timer.js"> </script>
+<script src="js/main.js"> </script>
 
 <script type="text/javascript">
 	
@@ -123,27 +129,35 @@ http://openweathermap.org/api
 	.then(JSON.parse, Error)
 	.then(x => Flickr.RequestSearchByLatLong(x.location.lat, x.location.lng))
 	.then(JSON.parse, Error)
-	.then(
-		x => {
+	.then(x => {
 			//select a photo randomly
 			let pic = x.photos.photo[Math.floor(Math.random() * x.photos.photo.length)]
 			return Flickr.RequestGetSizes(pic.id)
 		})
 	.then(JSON.parse, Error)
-	.then(
-		x => {
+	.then(x => {
 			let img_src =  x.sizes.size[Math.max(x.sizes.size.length - 2, 0)].source
-			LoadTextureFromSource("bg", img_src, {"min" : gl.LINEAR, "mag": gl.LINEAR, "wrap": gl.CLAMP_TO_EDGE, "generateMipmap" : false})
+			LoadTextureFromSource("bg", img_src, {
+				"min" : gl.LINEAR, 
+				"mag": gl.LINEAR, 
+				"wrap": gl.CLAMP_TO_EDGE, 
+				"generateMipmap" : false})
 		})
-	.then( x => {
-		BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2)
-		let main = programs.get("Main")
-		WithProgram(main, () => { 
-			gl.uniform1i(gl.getUniformLocation(main, "bg"), 2) 
-		})
-	}, Error)
+	.then(x => { 
+			BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2) 
+		}, Error)
+	//Wait for bind
+	.then(x => Timer.Count(2000))
+	//fade
+	.then(x => Timer.Count(500, (rel, abs, del, rem) => {
+			let pgm = programs.get("Main")
+			let val = Math.min(rel / 200., 1.)
+			WithProgram(pgm, () => {
+				gl.uniform1f(gl.getUniformLocation(pgm, "image_presence"), val)
+			})
+		}))
 
-
+	
 
 
 </script>

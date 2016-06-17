@@ -56,9 +56,7 @@ function RequestLocationFromBrowser ()
 var Flickr  = {
 
 	// https://www.flickr.com/services/api/flickr.places.findByLatLon.html
-	// API_KEY : "d36ec994c888939b1153f43994b63789",
 	BASE_URL: "https://api.flickr.com/services/rest/?",
-	EPILOG: "&api_key=d36ec994c888939b1153f43994b63789&format=json",
 
 	RequestSearchByLatLong : function(lat, lng)
 	{
