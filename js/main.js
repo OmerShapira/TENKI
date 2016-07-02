@@ -118,7 +118,7 @@ function Start(gl)
 	///
 
 
-	myText = TextBlock("Hello!",0.1, [0.9, 0.1])
+	// myText = TextBlock("Hello!",0.1, [0.9, 0.1])
 
 	//start
 
@@ -151,7 +151,7 @@ function Draw(gl, time){
 
 		})
 
-		myText.Draw();
+		// myText.Draw();
 	})
 
 	BindTextureAt(framebufferTextures.get("Text"), gl.TEXTURE_2D, 1)
