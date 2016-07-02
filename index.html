@@ -7,9 +7,12 @@ http://openweathermap.org/api
 <!DOCTYPE html>
 <html>
 
+<!-- Define the Charset  -->
+<!-- <meta charset="ISO-8859-1"> -->
+
 <head>
 
-<title></title>
+<title>TENKI</title>
 
 <style type="text/css">
 	* 			{ margin:0;		padding:0; } 
@@ -36,12 +39,46 @@ http://openweathermap.org/api
 	}
 </script>
 
+<script id="vs-TextBlock" type="x-shader/x-vertex">
+	attribute vec2 charUV;
+	attribute vec2 offset;
+	attribute vec2 vTexCoord;
+	attribute vec4 vPosition;
+
+	uniform float size;
+
+	varying vec2 uv;
+
+	void main()
+	{
+		mat3 m = mat3( vec3(size, 0., 0.), vec3(0., size, 0.), vec3(offset * 2., 1.) );
+		vec2 pos = (m * vPosition.xyz).xy;
+
+		gl_Position = vec4(pos, 1., 1.); // closer, for sorting.
+		uv = charUV * vTexCoord;
+	}
+</script>
+
+<script id="fs-TextBlock" type="x-shader/x-fragment">
+	precision mediump float;
+	varying vec2 uv;
+	uniform sampler2D tex;
+
+	void main()
+	{
+		gl_FragColor = vec4(uv, 0., 1.);
+	}
+	// gl_FragColor = texture2D(tex, uv);
+</script>
+
 <script id="fs-FontSampler" type="x-shader/x-fragment">
 	precision mediump float;
 
 	uniform sampler2D font;
 	uniform vec2 screenResolution;
 	uniform float time;
+
+	uniform float character;
 
 	varying vec2 v_texCoord;
 
@@ -89,8 +126,25 @@ http://openweathermap.org/api
 	uniform vec2 screenResolution;
 
 	uniform float image_presence;
+	uniform float time;
 
 	const float SPREAD_SIZE = 0.001;
+
+	float rand(vec2 n) 
+	{ 
+	    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
+	}
+
+	float tvnoise() 
+	{
+		vec3 p = vec3(floor( gl_FragCoord.xy * 500. / screenResolution.xy ) * 0.02,time);
+		float f = rand(p.xy + p.zz);
+		f *= rand(vec2(p.x * 0.0001 , p.y*0.001 + p.z * 0.000001));
+		f *= rand(vec2(p.x * 0.00001  , p.y+ p.z * 0.00001));
+		f *= rand(vec2(p.x * 0.000001  , p.y+ p.z * 0.0001));
+		return f;
+	}
+
 
 	void main()
 	{
@@ -105,6 +159,13 @@ http://openweathermap.org/api
 				spread = max(spread, texture2D(mainTex, vec2(i,j) * SPREAD_SIZE + uv).r);
 			}
 		}
+
+		float coord = mod(gl_FragCoord.x + gl_FragCoord.y, 7.); //pixel index
+		vec3 colorMask = vec3(
+				mod(coord, 3.)/3., 
+				mod(coord + 1., 3.)/3., 
+				mod(coord + 2., 3.)/3.); 
+
 		vec4 color = texture2D(mainTex, uv);
 		color.a = color.x;
 		color += spread * vec4(0.,0.,0.,1.);
@@ -112,6 +173,7 @@ http://openweathermap.org/api
 		vec3 bg_color = vec3(0.,0.,0.6);
 		vec3 bg_imgcolor = mix(bg_color, texture2D(bg, uv_norm_flipy).xyz, image_presence);
 		color.xyz = color.a * color.xyz + bg_imgcolor.xyz * (1. - color.a); 
+		color.xyz *= colorMask * 3.;
 		// color.xyz = bg_imgcolor.xyz;
 		color.a = 1.;
 		gl_FragColor = color;
@@ -121,6 +183,7 @@ http://openweathermap.org/api
 <script src="js/request.js"></script>
 <script src="js/keys.js"></script>
 <script src="js/timer.js"> </script>
+<script src="js/text.js"> </script>
 <script src="js/main.js"> </script>
 
 <script type="text/javascript">

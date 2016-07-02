@@ -7,6 +7,10 @@ var programs 			= new Map()
 
 var canvas = document.getElementById("mainCanvas")	
 var gl = InitGLContext(canvas)
+
+var myText;
+
+
 window.onresize = ResizeCanvas
 
 if (gl) { Start(gl) }
@@ -18,8 +22,10 @@ function Start(gl)
 	LoadAssets(gl, textures)
 	LoadShaders(gl, shaders, new Map([
 		["vs-ScreenSpace", 	gl.VERTEX_SHADER],
+		["vs-TextBlock",	gl.VERTEX_SHADER],
+		["fs-Main", 		gl.FRAGMENT_SHADER],
 		["fs-FontSampler", 	gl.FRAGMENT_SHADER],
-		["fs-Main", 		gl.FRAGMENT_SHADER]
+		["fs-TextBlock", 	gl.FRAGMENT_SHADER]
 		]))
 
 	programs.set("FontSampler", CreateProgram(gl, 
@@ -27,6 +33,9 @@ function Start(gl)
 		))
 	programs.set("Main", CreateProgram(gl, 
 			[shaders["vs-ScreenSpace"], shaders["fs-Main"]]
+		))
+	programs.set("TextBlock", CreateProgram(gl,
+			[shaders["vs-TextBlock"], shaders["fs-TextBlock"]]
 		))
 
 	//Set up Buffers
@@ -72,14 +81,14 @@ function Start(gl)
 
 	//Set up uniforms
 
-	WithProgram(programs.get("FontSampler"), () => {
-		gl.uniform1i(gl.getUniformLocation(programs.get("FontSampler"), "font"), 0)
+	WithProgram(programs.get("FontSampler"), (pgm) => {
+		gl.uniform1i(gl.getUniformLocation(pgm, "font"), 0)
 	})
 
-	WithProgram(programs.get("Main"), () => {
-		gl.uniform1i(gl.getUniformLocation(programs.get("Main"), "mainTex"), 1)
-		gl.uniform1i(gl.getUniformLocation(programs.get("Main"), "bg"),      2)
-		gl.uniform1f(gl.getUniformLocation(programs.get("Main"), "image_presence"), 0) 
+	WithProgram(programs.get("Main"), (pgm) => {
+		gl.uniform1i(gl.getUniformLocation(pgm, "mainTex"), 1)
+		gl.uniform1i(gl.getUniformLocation(pgm, "bg"),      2)
+		gl.uniform1f(gl.getUniformLocation(pgm, "image_presence"), 0) 
 	})
 	
 
@@ -106,6 +115,11 @@ function Start(gl)
 	gl.enable(gl.DEPTH_TEST)
 	gl.depthFunc(gl.LEQUAL)
 	
+	///
+
+
+	myText = TextBlock("Hello!",0.1, [0.9, 0.1])
+
 	//start
 
 	Loop(0) 
@@ -136,6 +150,8 @@ function Draw(gl, time){
 			gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
 
 		})
+
+		myText.Draw();
 	})
 
 	BindTextureAt(framebufferTextures.get("Text"), gl.TEXTURE_2D, 1)
@@ -282,14 +298,14 @@ function WithProgram(pgm, func)
 {
 	let active = gl.getParameter(gl.CURRENT_PROGRAM)
 	gl.useProgram(pgm)
-	func()
+	func(pgm)
 	gl.useProgram(active)
 }
 
 function WithFramebuffer(fb, func)
 {
 	gl.bindFramebuffer(gl.FRAMEBUFFER, fb)
-	func()
+	func(fb)
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 }
 
@@ -300,7 +316,9 @@ function InitGLContext(canvas)
 		gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
 	}
 	catch(e) {}
-	if (!gl) 
+	let supported = gl && gl.getExtension('ANGLE_instanced_arrays')
+
+	if (!supported) 
 	{
 		console.error("WebGL is not enabled on this browser")
 		gl = null
