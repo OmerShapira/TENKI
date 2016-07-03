@@ -8,7 +8,8 @@ var programs 			= new Map()
 var canvas = document.getElementById("mainCanvas")	
 var gl = InitGLContext(canvas)
 
-var myText;
+var myText
+var screen_vertex, screen_index
 
 
 window.onresize = ResizeCanvas
@@ -55,11 +56,11 @@ function Start(gl)
 	var indexBuffer = new Int16Array([0,1,2, 3,2,1])
 	
 	//Set up GL	buffers
-	var screen_vertex = gl.createBuffer()
+	screen_vertex = gl.createBuffer()
 	gl.bindBuffer(gl.ARRAY_BUFFER, screen_vertex)
 	gl.bufferData(gl.ARRAY_BUFFER, vertexBuffer, gl.STATIC_DRAW)
 
-	var screen_index = gl.createBuffer()
+	screen_index = gl.createBuffer()
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, screen_index)
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexBuffer, gl.STATIC_DRAW)
 	
@@ -118,7 +119,8 @@ function Start(gl)
 	///
 
 
-	// myText = TextBlock("Hello!",0.1, [0.9, 0.1])
+	myText = TextBlock("Hello Nitzu 00000 oooo!",0.08, [0.1, 0.3])
+
 
 	//start
 
@@ -144,14 +146,24 @@ function Draw(gl, time){
 	BindTextureAt(textures["unifont"], gl.TEXTURE_2D, 0)
 
 	WithFramebuffer(framebuffers.get("Text"), () => {
-		WithProgram(programs.get("FontSampler"), () => {
+		WithProgram(programs.get("FontSampler"), (pgm) => {
 
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+			gl.bindBuffer(gl.ARRAY_BUFFER, screen_vertex)
+
+			let positionLocation = gl.getAttribLocation(pgm, "vPosition")
+			gl.enableVertexAttribArray(positionLocation)
+			gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, gl.FALSE, 0, 0)
+
+			let texCoordLocation = gl.getAttribLocation(pgm, "vTexCoord")
+			gl.enableVertexAttribArray(texCoordLocation)
+			gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, gl.FALSE, 0, 8 * 4)
+			
 			gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
 
 		})
 
-		// myText.Draw();
+		myText.Draw()
 	})
 
 	BindTextureAt(framebufferTextures.get("Text"), gl.TEXTURE_2D, 1)

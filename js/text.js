@@ -1,13 +1,15 @@
 function TextBlock (text, size, position)
 {
+	const ANGLE = gl.getExtension('ANGLE_instanced_arrays')
+
 	let _text = text || ""
 	let _size = size || 0.05
 	let _position = position || [0.5, 0.5]
 
-	let _instanceData_pos = [] //new Float32Array()
-	let _instanceData_uv = [] //new Float32Array()
-
-	var ANGLE;
+	let _instanceData = [] 
+	
+	var _instanceDataBuffer
+	var _charCount =  0
 
 	//make display list
 	for (let i = 0; i < _text.length; ++i)
@@ -17,18 +19,20 @@ function TextBlock (text, size, position)
 		{
 			//calculate position
 			let offset = _getOffset(i)
-			_instanceData_pos.push(_position[0] + offset[0], position[1] + offset[1])
+			_instanceData.push(_position[0] + offset[0], position[1] + offset[1])
 
 			//calculate unicode
 			let uv = _getTextUV_UL(_text[i])
-			_instanceData_uv.push(uv[0], uv[1])
+			_instanceData.push(uv[0], uv[1])
+
+			++_charCount
 		}
 	}
 
 	
 	function _getOffset (index)
 	{
-		return [_position[0], _position[1] + _size * index]
+		return [_position[0] + _size * index, _position[1]]
 		//TODO (OS): implement wrap
 	}
 
@@ -39,36 +43,53 @@ function TextBlock (text, size, position)
 	}
 
 	//setup
+	
 	WithProgram (programs.get("TextBlock"), (pgm) => {
-		ANGLE = gl.getExtension('ANGLE_instanced_arrays')
-		let _offsetBuffer = gl.createBuffer()
-		gl.bindBuffer(gl.ARRAY_BUFFER, _offsetBuffer)
-		gl.bufferData(gl.ARRAY_BUFFER, _instanceData_pos, gl.STATIC_DRAW)
-		
-		let offsetLocation = gl.getAttribLocation(pgm, "offset")
-		gl.enableVertexAttribArray(offsetLocation)
-		gl.vertexAttribPointer(offsetLocation, 2, gl.FLOAT, gl.FALSE, 0, 0)
-		ANGLE.vertexAttribDivisorANGLE(offsetLocation, 6) 
-
-		let _charUVBuffer = gl.createBuffer()
-		gl.bindBuffer(gl.ARRAY_BUFFER, _charUVBuffer)
-		gl.bufferData(gl.ARRAY_BUFFER, _instanceData_uv, gl.STATIC_DRAW)	
-
-		let charUVLocation = gl.getAttribLocation(pgm, "charUV")
-		gl.enableVertexAttribArray(charUVLocation)
-		gl.vertexAttribPointer(charUVLocation, 2, gl.FLOAT, gl.FALSE, 0, 0)
-		ANGLE.vertexAttribDivisorANGLE(charUVLocation, 0)
+		_instanceDataBuffer = gl.createBuffer()
+		gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(_instanceData), gl.STATIC_DRAW)		
 	})
 
 	return {
 		Draw: function()
 		{
 			WithProgram(programs.get("TextBlock"), (pgm)=>{
+				let len = Math.round(_charCount)
+
+				// gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, screen_index)
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
+
 				let sizeLocation = gl.getUniformLocation(pgm, "size")
 				gl.uniform1f(sizeLocation, _size)
+				
+				let offsetLocation = gl.getAttribLocation(pgm, "offset")
+				gl.enableVertexAttribArray(offsetLocation)
+				gl.vertexAttribPointer(offsetLocation, 2, gl.FLOAT, gl.FALSE, 2 * 4, 0)
+				ANGLE.vertexAttribDivisorANGLE(offsetLocation, 1) 
 
-				let len = Math.round(_instanceData_uv.length / 2)
+				let charUVLocation = gl.getAttribLocation(pgm, "charUV")
+				gl.enableVertexAttribArray(charUVLocation)
+				gl.vertexAttribPointer(charUVLocation, 2, gl.FLOAT, gl.FALSE, 2 * 4, 2 * 4)
+				ANGLE.vertexAttribDivisorANGLE(charUVLocation, 1)
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, screen_vertex)
+				
+				// let positionLocation = gl.getAttribLocation(pgm, "vPosition")
+				// gl.enableVertexAttribArray(positionLocation)
+				// gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, gl.FALSE, 0, 0)
+				// ANGLE.vertexAttribDivisorANGLE(positionLocation, 0)
+
+				// let texCoordLocation = gl.getAttribLocation(pgm, "vTexCoord")
+				// gl.enableVertexAttribArray(texCoordLocation)
+				// gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, gl.FALSE, 0, 8 * 4)
+				// ANGLE.vertexAttribDivisorANGLE(texCoordLocation, 0)
+				
+				// gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
 				ANGLE.drawElementsInstancedANGLE(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, len)
+				// ANGLE.vertexAttribDivisorANGLE(offsetLocation, 0) 
+				// ANGLE.vertexAttribDivisorANGLE(charUVLocation, 0)
+			
 			})
 		}
 	}
