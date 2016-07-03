@@ -119,7 +119,7 @@ function Start(gl)
 	///
 
 
-	myText = TextBlock("Hello Nitzu 00000 oooo!",0.08, [0.1, 0.3])
+	myText = TextBlock("HelloＨＥＬＬＯ", 0.02, [0.1, 0.00])
 
 
 	//start

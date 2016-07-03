@@ -47,6 +47,7 @@ http://openweathermap.org/api
 	attribute vec2 offset;
 
 	uniform float size;
+	uniform vec2 screenResolution;
 
 	varying vec2 uv;
 
@@ -54,14 +55,12 @@ http://openweathermap.org/api
 
 	void main()
 	{
-		mat3 m = mat3( 
-			vec3(size * 0.5, 0., 0.), 
-			vec3(0., size * 0.5, 0.), 
-			vec3(offset - vec2(1.), 1.)
-			);
-		vec3 pos = (m * vec3(vPosition.xy, 1.) );
+		float screen_ratio = screenResolution.x / screenResolution.y;
+		vec2 pos_TL = vec2 (vPosition.xy + vec2(1.,-1.)) * 0.5;
+		vec2 offset_NDC = vec2(offset.x, 2. - offset.y) * 0.5 - vec2(1.);
+		vec2 pos = pos_TL * size * vec2(1., screen_ratio) + offset_NDC;
 
-		gl_Position = vec4(pos.xy, 1., 1.); // closer, for sorting.
+		gl_Position = vec4(pos.xy, 1.0, 1.0); // closer, for sorting.
 		uv = charUV + (vTexCoord * INV_256);
 	}
 </script>
@@ -73,7 +72,7 @@ http://openweathermap.org/api
 
 	void main()
 	{
-		// gl_FragColor = vec4(uv, 0., 1.);
+		gl_FragColor = vec4(uv, 0., 1.);
 		gl_FragColor = vec4(1.) - texture2D(tex, uv).xxxx;
 	}
 </script>
@@ -167,7 +166,7 @@ http://openweathermap.org/api
 			}
 		}
 
-		float coord = mod(gl_FragCoord.x + gl_FragCoord.y, 7.); //pixel index
+		float coord = mod(gl_FragCoord.x*11. + gl_FragCoord.y * 271., 7.); //pixel index
 		vec3 colorMask = vec3(
 				mod(coord, 3.)/3., 
 				mod(coord + 1., 3.)/3., 
@@ -180,7 +179,7 @@ http://openweathermap.org/api
 		vec3 bg_color = vec3(0.,0.,0.6);
 		vec3 bg_imgcolor = mix(bg_color, texture2D(bg, uv_norm_flipy).xyz, image_presence);
 		color.xyz = color.a * color.xyz + bg_imgcolor.xyz * (1. - color.a); 
-		color.xyz *= colorMask * 3.;
+		color.xyz = mix (color.xyz * colorMask * 3., color.xyz, 0.15);
 		// color.xyz = bg_imgcolor.xyz;
 		color.a = 1.;
 		gl_FragColor = color;
@@ -220,9 +219,8 @@ http://openweathermap.org/api
 	.then(x => Timer.Count(2000))
 	//fade
 	.then(x => Timer.Count(500, (rel, abs, del, rem) => {
-			let pgm = programs.get("Main")
 			let val = Math.min(rel / 200., 1.)
-			WithProgram(pgm, () => {
+			WithProgram(programs.get("Main"), (pgm) => {
 				gl.uniform1f(gl.getUniformLocation(pgm, "image_presence"), val)
 			})
 		}))

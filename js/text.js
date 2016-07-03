@@ -32,7 +32,7 @@ function TextBlock (text, size, position)
 	
 	function _getOffset (index)
 	{
-		return [_position[0] + _size* 2.1 * index, _position[1]]
+		return [_position[0] + _size * 2.0 * index, _position[1]]
 		//TODO (OS): implement wrap
 	}
 
