@@ -32,7 +32,7 @@ function TextBlock (text, size, position)
 	
 	function _getOffset (index)
 	{
-		return [_position[0] + _size * index, _position[1]]
+		return [_position[0] + _size* 2.1 * index, _position[1]]
 		//TODO (OS): implement wrap
 	}
 
@@ -56,8 +56,7 @@ function TextBlock (text, size, position)
 			WithProgram(programs.get("TextBlock"), (pgm)=>{
 				let len = Math.round(_charCount)
 
-				// gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, screen_index)
-
+				
 				gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
 
 				let sizeLocation = gl.getUniformLocation(pgm, "size")
@@ -65,28 +64,16 @@ function TextBlock (text, size, position)
 				
 				let offsetLocation = gl.getAttribLocation(pgm, "offset")
 				gl.enableVertexAttribArray(offsetLocation)
-				gl.vertexAttribPointer(offsetLocation, 2, gl.FLOAT, gl.FALSE, 2 * 4, 0)
+				gl.vertexAttribPointer(offsetLocation, 2, gl.FLOAT, gl.FALSE, 4 * 4, 0)
 				ANGLE.vertexAttribDivisorANGLE(offsetLocation, 1) 
 
 				let charUVLocation = gl.getAttribLocation(pgm, "charUV")
 				gl.enableVertexAttribArray(charUVLocation)
-				gl.vertexAttribPointer(charUVLocation, 2, gl.FLOAT, gl.FALSE, 2 * 4, 2 * 4)
+				gl.vertexAttribPointer(charUVLocation, 2, gl.FLOAT, gl.FALSE, 4 * 4, 2 * 4)
 				ANGLE.vertexAttribDivisorANGLE(charUVLocation, 1)
 
-				gl.bindBuffer(gl.ARRAY_BUFFER, screen_vertex)
-				
-				// let positionLocation = gl.getAttribLocation(pgm, "vPosition")
-				// gl.enableVertexAttribArray(positionLocation)
-				// gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, gl.FALSE, 0, 0)
-				// ANGLE.vertexAttribDivisorANGLE(positionLocation, 0)
-
-				// let texCoordLocation = gl.getAttribLocation(pgm, "vTexCoord")
-				// gl.enableVertexAttribArray(texCoordLocation)
-				// gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, gl.FALSE, 0, 8 * 4)
-				// ANGLE.vertexAttribDivisorANGLE(texCoordLocation, 0)
-				
-				// gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
 				ANGLE.drawElementsInstancedANGLE(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, len)
+
 				// ANGLE.vertexAttribDivisorANGLE(offsetLocation, 0) 
 				// ANGLE.vertexAttribDivisorANGLE(charUVLocation, 0)
 			
