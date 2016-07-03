@@ -119,7 +119,7 @@ function Start(gl)
 	///
 
 
-	myText = TextBlock("HelloＨＥＬＬＯ", 0.02, [0.1, 0.00])
+	myText = TextBlock(String.fromCharCode(0x26C4, 0x2B94)+"ＨＥＬＬＯ   Ｙｏｕｒ ｍｅｍｏｒｉｅｓ ａｒｅ ｓａｆｅ", 0.02, [0.1, 0.7])
 
 
 	//start
