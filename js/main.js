@@ -271,10 +271,7 @@ function LoadShaders(gl, shaders, list)
 			var info = gl.getShaderInfoLog(shader)
 			console.error("Shader Compile Error: " + info)
 		}
-		else
-		{
-			return shader
-		}
+    return shader
 	}
 
 	let source = (id) => document.getElementById(id).innerHTML
