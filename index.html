@@ -1,4 +1,4 @@
-<!-- 
+<!--
 http://graphical.weather.gov/xml/
 http://graphical.weather.gov/sectors/midatlantic.php#tabs
 http://openweathermap.org/api
@@ -15,9 +15,9 @@ http://openweathermap.org/api
 <title>TENKI</title>
 
 <style type="text/css">
-	* 			{ margin:0;		padding:0; } 
-	html, body 	{ width:100%; 	height:100%; } 
-	canvas 		{ display:block; } 
+  *       { margin:0;		padding:0; }
+  html, body  { width:100%;   height:100%; }
+  canvas    { display:block; }
 </style>
 
 </head>
@@ -27,176 +27,177 @@ http://openweathermap.org/api
 <canvas id="mainCanvas" style="border:none;">you're using a toaster.</canvas>
 
 <script id="vs-ScreenSpace" type="x-shader/x-vertex">
-	attribute vec2 vTexCoord;
-	attribute vec4 vPosition;
+  attribute vec2 vTexCoord;
+  attribute vec4 vPosition;
 
-	varying vec2 v_texCoord;
+  varying vec2 v_texCoord;
 
-	void main()
-	{
-		gl_Position = vec4(vPosition.xy, 0.,1.);
-		v_texCoord = vec2(vTexCoord.s ,1. - vTexCoord.t);
-	}
+  void main()
+  {
+    gl_Position = vec4(vPosition.xy, 0.,1.);
+    v_texCoord = vec2(vTexCoord.s ,1. - vTexCoord.t);
+  }
 </script>
 
 <script id="vs-TextBlock" type="x-shader/x-vertex">
-	attribute vec2 vTexCoord;
-	attribute vec4 vPosition;
-	
-	attribute vec2 charUV;
-	attribute vec2 offset;
+  attribute vec2 vTexCoord;
+  attribute vec4 vPosition;
 
-	uniform float size;
-	uniform float time;
-	uniform vec2 screenResolution;
+  attribute vec2 charUV;
+  attribute vec2 offset;
 
-	varying vec2 uv;
+  uniform vec2 size;
 
-	const float INV_256 = 0.00390625;
+  uniform float time;
+  uniform vec2 screenResolution;
 
-	void main()
-	{
-		float screen_ratio = screenResolution.x / screenResolution.y;
+  varying vec2 uv;
 
-		//Normalized device coordinates
-		vec2 offset_NDC = vec2(offset.x, 2. - offset.y) * 0.5 - vec2(1.);
+  const float INV_256 = 0.00390625;
 
-		vec2 pos_TL = vec2 (vPosition.xy + vec2(1.,-1.)) * 0.5;
-		vec2 pos = pos_TL * size * vec2(1., screen_ratio) + offset_NDC;
+  void main()
+  {
+    float screen_ratio = screenResolution.x / screenResolution.y;
 
-		gl_Position = vec4(pos.xy, 1.0, 1.0); // closer, for sorting.
-		uv = charUV  + (vTexCoord * INV_256); //(fract(time) < 0.1 ? vec2(INV_256 * mod(time, 11.), 0.) : vec2(0.,0.) ) + 
+    //Normalized device coordinates
+    vec2 offset_NDC = vec2(offset.x, 2. - offset.y) * 0.5 - vec2(1.);
 
-	}
+    vec2 pos_TL = vec2 (vPosition.xy + vec2(1.,-1.)) * 0.5;
+    vec2 pos = pos_TL * size * vec2(1., screen_ratio) + offset_NDC;
+
+    gl_Position = vec4(pos.xy, 1.0, 1.0); // closer, for sorting.
+    uv = charUV  + (vTexCoord * INV_256); //(fract(time) < 0.1 ? vec2(INV_256 * mod(time, 11.), 0.) : vec2(0.,0.) ) +
+
+  }
 </script>
 
 <script id="fs-TextBlock" type="x-shader/x-fragment">
-	precision mediump float;
-	varying vec2 uv;
-	uniform sampler2D tex;
+  precision mediump float;
+  varying vec2 uv;
+  uniform sampler2D tex;
 
-	void main()
-	{
-		gl_FragColor = vec4(uv, 0., 1.);
-		gl_FragColor = vec4(1.) - texture2D(tex, uv).xxxx;
-	}
+  void main()
+  {
+    gl_FragColor = vec4(uv, 0., 1.);
+    gl_FragColor = vec4(1.) - texture2D(tex, uv).xxxx;
+  }
 </script>
 
 <script id="fs-FontSampler" type="x-shader/x-fragment">
-	precision mediump float;
+  precision mediump float;
 
-	uniform sampler2D font;
-	uniform vec2 screenResolution;
-	uniform float time;
+  uniform sampler2D font;
+  uniform vec2 screenResolution;
+  uniform float time;
 
-	uniform float character;
+  uniform float character;
 
-	varying vec2 v_texCoord;
+  varying vec2 v_texCoord;
 
-	const float INV_256 = 0.00390625;
-	const float SQ_256 = 256. * 256.;
-	const vec2 TILE_SIZE = vec2(16.,16.);
-	const vec2 TEXTURE_SIZE = vec2(4096.);
+  const float INV_256 = 0.00390625;
+  const float SQ_256 = 256. * 256.;
+  const vec2 TILE_SIZE = vec2(16.,16.);
+  const vec2 TEXTURE_SIZE = vec2(4096.);
 
-	float timeSeed(){ return floor((mod (time, 1000.) + 1000.) * 0.012 ); }
+  float timeSeed(){ return floor((mod (time, 1000.) + 1000.) * 0.012 ); }
 
-	float rand(vec2 co){
-	    return fract(sin(dot(co.xy ,vec2(12.9898,78.233)) - timeSeed()) * 43758.5453);
-	}
+  float rand(vec2 co){
+      return fract(sin(dot(co.xy ,vec2(12.9898,78.233)) - timeSeed()) * 43758.5453);
+  }
 
-	void main()
-	{
-		
-		float t = time * 0.005;
+  void main()
+  {
 
-		vec2 texCoord = vec2(v_texCoord.s, 1.0 - v_texCoord.t);
-		vec2 screen_to_texture_ratio = TEXTURE_SIZE / screenResolution;
+    float t = time * 0.005;
 
-		//HACK (OS): Not using actual pixels but proportions I acquire from the browser
-		vec2 screenSpace_cornerUL = (floor(texCoord * screenResolution / 16.) * 16.) / screenResolution;
-		vec2 screenSpace_coordinate = texCoord; //TODO (OS): fill in later
+    vec2 texCoord = vec2(v_texCoord.s, 1.0 - v_texCoord.t);
+    vec2 screen_to_texture_ratio = TEXTURE_SIZE / screenResolution;
 
-		float idx = floor( rand(screenSpace_cornerUL) * SQ_256 );
-		vec2 textureSpace_cornerUL = vec2(mod(idx, 256.), idx * INV_256) * INV_256;
+    //HACK (OS): Not using actual pixels but proportions I acquire from the browser
+    vec2 screenSpace_cornerUL = (floor(texCoord * screenResolution / 16.) * 16.) / screenResolution;
+    vec2 screenSpace_coordinate = texCoord; //TODO (OS): fill in later
 
-		vec2 sampleCoord = textureSpace_cornerUL + (screenSpace_coordinate - screenSpace_cornerUL) / screen_to_texture_ratio;
+    float idx = floor( rand(screenSpace_cornerUL) * SQ_256 );
+    vec2 textureSpace_cornerUL = vec2(mod(idx, 256.), idx * INV_256) * INV_256;
 
-		vec4 color;
-		// if (fract(time * 0.01 + 100.) > 0.99){
-		// 	color = texture2D(font, sampleCoord);
-		// } else {
-			color = vec4(1.);
-		// }
-		
+    vec2 sampleCoord = textureSpace_cornerUL + (screenSpace_coordinate - screenSpace_cornerUL) / screen_to_texture_ratio;
+
+    vec4 color;
+    // if (fract(time * 0.01 + 100.) > 0.99){
+    //  color = texture2D(font, sampleCoord);
+    // } else {
+      color = vec4(1.);
+    // }
 
 
-		color.xyz = 1. - color.xyz;
-		gl_FragColor = color;
-	}
+
+    color.xyz = 1. - color.xyz;
+    gl_FragColor = color;
+  }
 </script>
 
-<script id="fs-Main" type="x-shader/x-fragment"> 
-	precision mediump float;
+<script id="fs-Main" type="x-shader/x-fragment">
+  precision mediump float;
 
-	uniform sampler2D mainTex;
-	uniform sampler2D bg;
-	varying vec2 v_texCoord;
-	uniform vec2 screenResolution;
+  uniform sampler2D mainTex;
+  uniform sampler2D bg;
+  varying vec2 v_texCoord;
+  uniform vec2 screenResolution;
 
-	uniform float image_presence;
-	uniform float time;
+  uniform float image_presence;
+  uniform float time;
 
-	const float SPREAD_SIZE = 0.001;
+  const float SPREAD_SIZE = 0.001;
 
-	float rand(vec2 n) 
-	{ 
-	    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
-	}
+  float rand(vec2 n)
+  {
+      return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
+  }
 
-	float tvnoise() 
-	{
-		vec3 p = vec3(floor( gl_FragCoord.xy * 500. / screenResolution.xy ) * 0.02,time);
-		float f = rand(p.xy + p.zz);
-		f *= rand(vec2(p.x * 0.0001 , p.y*0.001 + p.z * 0.000001));
-		f *= rand(vec2(p.x * 0.00001  , p.y+ p.z * 0.00001));
-		f *= rand(vec2(p.x * 0.000001  , p.y+ p.z * 0.0001));
-		return f;
-	}
+  float tvnoise()
+  {
+    vec3 p = vec3(floor( gl_FragCoord.xy * 500. / screenResolution.xy ) * 0.02,time);
+    float f = rand(p.xy + p.zz);
+    f *= rand(vec2(p.x * 0.0001 , p.y*0.001 + p.z * 0.000001));
+    f *= rand(vec2(p.x * 0.00001  , p.y+ p.z * 0.00001));
+    f *= rand(vec2(p.x * 0.000001  , p.y+ p.z * 0.0001));
+    return f;
+  }
 
 
-	void main()
-	{
-		vec2 uv = v_texCoord * 0.5;
-		vec2 uv_norm =  gl_FragCoord.xy / screenResolution.xy;
-		vec2 uv_norm_flipy = vec2(uv_norm.x, 1. - uv_norm.y);
-		float spread = 0.;
-		for (int j = -1 ; j <= 1; j++)
-		{
-			for (int i = -1 ; i <= 1; i++)
-			{
-				spread = max(spread, texture2D(mainTex, vec2(i,j) * SPREAD_SIZE + uv).r);
-			}
-		}
+  void main()
+  {
+    vec2 uv = v_texCoord * 0.5;
+    vec2 uv_norm =  gl_FragCoord.xy / screenResolution.xy;
+    vec2 uv_norm_flipy = vec2(uv_norm.x, 1. - uv_norm.y);
+    float spread = 0.;
+    for (int j = -1 ; j <= 1; j++)
+    {
+      for (int i = -1 ; i <= 1; i++)
+      {
+        spread = max(spread, texture2D(mainTex, vec2(i,j) * SPREAD_SIZE + uv).r);
+      }
+    }
 
-		float coord = mod(gl_FragCoord.x*11. + gl_FragCoord.y * 271., 7.); //pixel index
-		vec3 colorMask = vec3(
-				mod(coord, 3.)/3., 
-				mod(coord + 1., 3.)/3., 
-				mod(coord + 2., 3.)/3.); 
+    float coord = mod(gl_FragCoord.x*11. + gl_FragCoord.y * 271., 7.); //pixel index
+    vec3 colorMask = vec3(
+        mod(coord, 3.)/3.,
+        mod(coord + 1., 3.)/3.,
+        mod(coord + 2., 3.)/3.);
 
-		vec4 color = texture2D(mainTex, uv);
-		color.a = color.x;
-		color += spread * vec4(0.,0.,0.,1.);
-		color = clamp(color, vec4(0.), vec4(1.));
-		vec3 bg_color = vec3(0.,0.,0.6);
-		vec3 bg_imgcolor = mix(bg_color, texture2D(bg, uv_norm_flipy).xyz, image_presence);
-		color.xyz = color.a * color.xyz + bg_imgcolor.xyz * (1. - color.a); 
-		color.xyz = mix (color.xyz * colorMask * 3., color.xyz, 0.15);
-		// color.xyz += vec3(tvnoise());
-		// color.xyz = bg_imgcolor.xyz;
-		color.a = 1.;
-		gl_FragColor = color;
-	}
+    vec4 color = texture2D(mainTex, uv);
+    color.a = color.x;
+    color += spread * vec4(0.,0.,0.,1.);
+    color = clamp(color, vec4(0.), vec4(1.));
+    vec3 bg_color = vec3(0.,0.,0.6);
+    vec3 bg_imgcolor = mix(bg_color, texture2D(bg, uv_norm_flipy).xyz, image_presence);
+    color.xyz = color.a * color.xyz + bg_imgcolor.xyz * (1. - color.a);
+    color.xyz = mix (color.xyz * colorMask * 3., color.xyz, 0.15);
+    // color.xyz += vec3(tvnoise());
+    // color.xyz = bg_imgcolor.xyz;
+    color.a = 1.;
+    gl_FragColor = color;
+  }
 </script>
 
 <script src="js/request.js"></script>
@@ -206,39 +207,39 @@ http://openweathermap.org/api
 <script src="js/main.js"> </script>
 
 <script type="text/javascript">
-	
-	RequestLocationFromRemoteService()
-	.then(JSON.parse, Error)
-	.then(x => Flickr.RequestSearchByLatLong(x.location.lat, x.location.lng))
-	.then(JSON.parse, Error)
-	.then(x => {
-			//select a photo randomly
-			let pic = x.photos.photo[Math.floor(Math.random() * x.photos.photo.length)]
-			return Flickr.RequestGetSizes(pic.id)
-		})
-	.then(JSON.parse, Error)
-	.then(x => {
-			let img_src =  x.sizes.size[Math.max(x.sizes.size.length - 2, 0)].source
-			LoadTextureFromSource("bg", img_src, {
-				"min" : gl.LINEAR, 
-				"mag": gl.LINEAR, 
-				"wrap": gl.CLAMP_TO_EDGE, 
-				"generateMipmap" : false})
-		})
-	.then(x => { 
-			BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2) 
-		}, Error)
-	//Wait for bind
-	.then(x => Timer.Count(2000))
-	//fade
-	.then(x => Timer.Count(500, (rel, abs, del, rem) => {
-			let val = Math.min(rel / 200., 1.)
-			WithProgram(programs.get("Main"), (pgm) => {
-				gl.uniform1f(gl.getUniformLocation(pgm, "image_presence"), val)
-			})
-		}))
 
-	
+  RequestLocationFromRemoteService()
+  .then(JSON.parse, Error)
+  .then(x => Flickr.RequestSearchByLatLong(x.location.lat, x.location.lng))
+  .then(JSON.parse, Error)
+  .then(x => {
+      //select a photo randomly
+      let pic = x.photos.photo[Math.floor(Math.random() * x.photos.photo.length)]
+      return Flickr.RequestGetSizes(pic.id)
+    })
+  .then(JSON.parse, Error)
+  .then(x => {
+      let img_src =  x.sizes.size[Math.max(x.sizes.size.length - 2, 0)].source
+      LoadTextureFromSource("bg", img_src, {
+        "min" : gl.LINEAR,
+        "mag": gl.LINEAR,
+        "wrap": gl.CLAMP_TO_EDGE,
+        "generateMipmap" : false})
+    })
+  .then(x => {
+      BindTextureAt(textures["bg"], gl.TEXTURE_2D, 2)
+    }, Error)
+  //Wait for bind
+  .then(x => Timer.Count(2000))
+  //fade
+  .then(x => Timer.Count(500, (rel, abs, del, rem) => {
+      let val = Math.min(rel / 200., 1.)
+      WithProgram(programs.get("Main"), (pgm) => {
+        gl.uniform1f(gl.getUniformLocation(pgm, "image_presence"), val)
+      })
+    }))
+
+
 
 
 </script>

@@ -2,9 +2,19 @@ function TextBlock (text, size, position)
 {
   const ANGLE = gl.getExtension('ANGLE_instanced_arrays')
 
+  let _bufferAspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight
   let _text = text || ""
-  let _size = size || 0.05
   let _position = position || [0.5, 0.5]
+  let _sizeMult = size || 0.05
+  var _size = [_sizeMult, _sizeMult]
+  if (_bufferAspectRatio > 1)
+  {
+    _size[0] /= _bufferAspectRatio
+  }
+  else
+  {
+    _size[1] *= _bufferAspectRatio
+  }
 
   let _instanceData = []
 
@@ -19,7 +29,7 @@ function TextBlock (text, size, position)
     {
       //calculate position
       let offset = _getOffset(i)
-      _instanceData.push(_position[0] + offset[0], position[1] + offset[1])
+      _instanceData.push(_position[0] + offset[0], _position[1] + offset[1])
 
       //calculate unicode
       let uv = _getTextUV_UL(_text[i])
@@ -32,7 +42,7 @@ function TextBlock (text, size, position)
 
   function _getOffset (index)
   {
-    return [_position[0] + _size * 2.0 * index, _position[1]]
+    return [_position[0] + _size[0] * 2.0 * index, _position[1]]
     //TODO (OS): implement wrap
   }
 
@@ -54,13 +64,13 @@ function TextBlock (text, size, position)
     Draw: function()
     {
       WithProgram(programs.get("TextBlock"), (pgm)=>{
-        let len = Math.round(_charCount)
 
+        let len = Math.round(_charCount)
 
         gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
 
         let sizeLocation = gl.getUniformLocation(pgm, "size")
-        gl.uniform1f(sizeLocation, _size)
+        gl.uniform2f(sizeLocation, _size[0], _size[1])
 
         let offsetLocation = gl.getAttribLocation(pgm, "offset")
         gl.enableVertexAttribArray(offsetLocation)
