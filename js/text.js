@@ -6,15 +6,6 @@ function TextBlock (text, size, position)
   let _text = text || ""
   let _position = position || [0.5, 0.5]
   let _sizeMult = size || 0.05
-  var _size = [_sizeMult, _sizeMult]
-  if (_bufferAspectRatio > 1)
-  {
-    _size[0] /= _bufferAspectRatio
-  }
-  else
-  {
-    _size[1] *= _bufferAspectRatio
-  }
 
   let _instanceData = []
 
@@ -39,10 +30,25 @@ function TextBlock (text, size, position)
     }
   }
 
+  function _getSize()
+  {
+    let _bufferAspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight
+    var _size = [_sizeMult, _sizeMult]
+    if (_bufferAspectRatio > 1)
+    {
+      _size[0] /= _bufferAspectRatio
+    }
+    else
+    {
+      _size[1] *= _bufferAspectRatio
+    }
+
+    return _size
+  }
 
   function _getOffset (index)
   {
-    return [_position[0] + _size[0] * 2.0 * index, _position[1]]
+    return [_position[0] + _getSize()[0] * 2.0 * index, _position[1]]
     //TODO (OS): implement wrap
   }
 
@@ -70,7 +76,7 @@ function TextBlock (text, size, position)
         gl.bindBuffer(gl.ARRAY_BUFFER, _instanceDataBuffer)
 
         let sizeLocation = gl.getUniformLocation(pgm, "size")
-        gl.uniform2f(sizeLocation, _size[0], _size[1])
+        gl.uniform2fv(sizeLocation, _getSize())
 
         let offsetLocation = gl.getAttribLocation(pgm, "offset")
         gl.enableVertexAttribArray(offsetLocation)

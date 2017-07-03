@@ -10,7 +10,6 @@ var gl = InitGLContext(canvas)
 var myText
 var screen_vertex, screen_index
 
-
 window.onresize = ResizeCanvas
 
 if (gl) { Start(gl) }
@@ -118,7 +117,7 @@ function Start(gl)
   ///
 
 
-  myText = TextBlock(String.fromCharCode(0x26C4, 0x2B94)+"ＨＥＬＬＯ   Ｙｏｕｒ ｍｅｍｏｒｉｅｓ ａｒｅ ｓａｆｅ", 0.02, [0.1, 0.7])
+  myText = TextBlock(String.fromCharCode(0x26C4, 0x2B94)+"HELLOＨＥＬＬＯ   Ｙｏｕｒ ｍｅｍｏｒｉｅｓ ａｒｅ ｓａｆｅ", 0.015, [0.1, 0.7])
 
 
   //start
